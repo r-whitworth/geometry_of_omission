@@ -1,0 +1,22 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Virtual envs
+.env/
+venv/
+*.egg-info/
+
+# Output
+figures/
+*.png
+*.pdf
+
+# Misc
+*.log
+*.ipynb_checkpoints/
