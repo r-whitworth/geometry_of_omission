@@ -1,0 +1,14 @@
+name: geometry_of_omission
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy=1.26.4
+  - pandas=2.2.2
+  - scikit-learn=1.5.2
+  - matplotlib=3.8.4
+  - pytorch=2.3.1
+  - xgboost=2.1.0
+  - scipy=1.13.1
+  - seaborn=0.13.2

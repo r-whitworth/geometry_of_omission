@@ -1,0 +1,830 @@
+\documentclass[11pt]{article}
+
+% --- packages ---
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{authblk}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage[default]{sourcesanspro}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{multirow}
+\usepackage{tcolorbox}
+\usepackage{capt-of}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage[labelfont=bf, textfont=normalfont]{caption}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+  pdfauthor={Rebecca Whitworth},
+  pdftitle={The Geometry of Omission: Type I, II, and III Identification in Correlated Data}
+}
+
+\graphicspath{{figures/}}
+
+\onehalfspacing
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+% =========================
+% Title block
+% =========================
+\begingroup
+\centering
+{\Large \textbf{Working Paper}}\par\vspace{0.5em}
+{\LARGE \textbf{The Geometry of Omission:}\\[0.25em]
+\LARGE \textbf{Type I, II, and III Identification in Correlated Data}}\par
+\vspace{1em}
+
+{\large \textbf{Rebecca Whitworth, PhD}}\par
+{\large Independent Researcher}\par
+\vspace{0.4em}
+{\large \href{mailto:rebeccawhitworth@gmail.com}{rebeccawhitworth@gmail.com} \quad|\quad
+\href{https://github.com/r-whitworth}{github.com/r-whitworth}}\par
+\vspace{1em}
+{\large October 2025}\par
+{\small \textit{Version: arXiv preprint v1\hspace{0pt}\\
+License: MIT License (text and code)}}
+
+\vspace{1em}
+\begin{minipage}{0.92\textwidth}
+\small
+\textbf{Disclaimer.} The opinions expressed in this paper are solely those of the author and do not represent the views of any institution, employer, or organization. Any errors or omissions are entirely my own.
+\end{minipage}
+\par
+\endgroup
+
+\vspace{0.75em}
+
+% =========================================================
+\begin{abstract}
+Omitting structure does not erase it—it changes where it lives.
+When data are demeaned or group intercepts suppressed, correlated covariates reconstruct the missing direction.
+This paper characterizes that process as an \emph{identification geometry} of the underlying data–generating process (DGP), not of any particular model.
+Three stylized omission regimes—Type~I,~II,~and~III—represent distinct ways that the suppressed variable enters the DGP and, consequently, how its absence shapes model error.
+Type~I introduces only an intercept shift (no reconstructable direction), Type~II embeds the omitted attribute through a correlated covariate (partial recovery), and Type~III disperses it across a latent correlation network (complete recovery).
+Across these geometries, even simple linear learners reproduce most of the omitted signal, while flexible models converge slightly faster but recover the same structure.
+
+Simulations show a relationship between correlation strength~$\rho$ and recovered variance: as~$\rho \to 1$, reconstruction approaches 100~percent.
+Demeaning or suppressing protected attributes thus changes the space in which identification occurs rather than eliminating their influence.
+Fairness-through-unawareness fails not because models are complex, but because correlation geometry guarantees that the erased structure reappears elsewhere.
+This framework reframes fairness leakage as a property of the DGP’s correlation geometry, linking econometric identification theory to modern representation learning.
+
+\vspace{1.75 em}
+
+\textbf{Keywords:} identification, demeaning, omitted variable bias, correlated features, reconstruction geometry
+\end{abstract}
+
+\vspace{0.4em}
+\begin{quote}\small
+All code, figures, and replication notebooks are available at
+\href{https://github.com/r-whitworth/geometry-of-omission}
+{github.com/r-whitworth/geometry-of-omission}.
+\end{quote}
+
+\clearpage
+
+% =========================================================
+\section{Introduction: The Geometry of Suppression}
+
+Suppressing a variable does not erase its information—it changes where that information resides.
+In correlated systems, omission acts as a geometric transformation: the hidden axis tilts into the span of observed covariates rather than disappearing.
+Learners, regardless of architecture, recover that tilted direction because the structure is already embedded in the data–generating process (DGP).
+What looks like bias or “fairness leakage’’ is therefore an expression of the DGP’s correlation geometry, not of model complexity.
+Estimation error traces the same geometry, revealing how the omitted direction reappears within observable space.
+
+The classical econometric view of omitted variables frames this as bias in parameter estimates \cite{angrist2009mostly,wooldridge2010econometric}.
+In high-dimensional learning, the same mechanism governs representation recovery on a manifold \cite{bengio2013representation,bietti2021learning}.
+Demeaning, standardization, and "fairness-through-unawareness'' \cite{barocas2016big,dwork2012fairness} are therefore not modeling choices but geometric transformations of the data-space itself.
+They redefine the basis in which identification occurs.
+Models of any class—linear or nonlinear—reveal how much of that transformed structure remains observable.
+
+This paper formalizes those transformations as an \emph{identification geometry}.
+Three stylized omission regimes
+—Type~I,~II, and~III—represent distinct correlation geometries of the data generating process (DGP):
+\begin{itemize}
+   \item \textbf{Type~I (Intercept Only):}
+        A pure intercept shift to the data at the group level. No recoverable direction exists for the learner.
+   \item \textbf{Type~II (Correlated Covariates):}
+        Embedded signal through a restricted number of correlated covariates allows the learner to partially reconstruct the original signal,
+   \item \textbf{Type~III (Latent Correlation Network):}
+         Dispersed influence across a latent network of covariates allows the learner to nearly fully reconstruct the original signal.
+\end{itemize}
+It's important to emphasize, the pattern of reconstruction holds regardless of class of model—logit (linear), XGBoost, or NeuralNet (Batch Norm). Simulations trace how these DGP geometries map to predictable differences in model error, calibration, and recovered variance.
+
+By framing omission as a geometric property of the data rather than of the learner,
+the analysis shows that fairness-through-unawareness fails for structural reasons.
+Once even moderate correlation exists, the erased coordinate is re-encoded within the observable manifold.
+Learners differ only in how quickly they trace that surface—not in where they end up.
+
+Sections~\ref{sec:framework}--\ref{sec:ops}
+derive, simulate, and visualize these regimes,
+and the conclusion interprets their implications for identification and fairness.
+
+% =========================================================
+\section{Framework and Model Setup}
+\label{sec:framework}
+
+Omission occurs at the modeling stage, but reconstruction is governed by the geometry of the underlying data–generating process (DGP).
+Let the suppressed variable be $Z$ and the observed covariates $X$.
+The outcome is generated by
+\begin{equation}
+  y = \beta_0 + X\beta + \gamma Z + \varepsilon,
+  \label{eq:dgp}
+\end{equation}
+with $\varepsilon\!\sim\!N(0,\sigma^2)$ and (for Types II and III) $\mathrm{Cov}(X,Z)\neq0$.
+When $Z$ is omitted or centered away,
+the conditional expectation becomes
+\begin{equation}
+  \mathbb{E}[y|X] = \beta_0 + X\!\left(\beta + \gamma \Sigma_X^{-1}\mathrm{Cov}(X,Z)\right),
+  \label{eq:bias}
+\end{equation}
+the standard omitted‐variable bias rewritten geometrically
+(\citealp{greenland1999confounding, imbens2015causal}).
+Because $\mathrm{Cov}(X,Z)\neq0$, the omitted coordinate has a geometric projection onto the span of $X$, ensuring that recovery depends on correlation structure rather than model class.
+
+With this set-up in mind, the rest of the paper uncovers the impact of the DGP on the learner's ability to recovery the latent signal of $Z$ through $X$. Unsurprisingly, this depends on the degree of correlation, captured by $\rho$. For each regime, we examine the kernel density plots of predicted probabilities between models without exposure to $Z$ and models with exposure to $Z$ and calculate a \textbf{Reconstruction Ratio} as below. 
+
+\paragraph{Recoverability.}
+Define the \emph{reconstruction ratio}
+\begin{equation}
+  R(\rho) = \frac{R^2_{\text{without }Z}}{R^2_{\text{with }Z}},
+\label{eq:reconstruction_ratio}
+\end{equation}
+where $\rho$ indexes the correlation between~$X$ and~$Z$.
+Analytically, $R(\rho)\!\to\!1$ as $\rho\!\to\!1$.
+
+% =========================================================
+\section{Simulation Design: Type I, II, and III Regimes}
+\label{sec:simulation}
+
+The three omission regimes are defined at the level of the data–generating process (DGP), each specifying a distinct correlation geometry describing how the suppressed variable enters the system and how its influence propagates once omitted.  
+Type~I introduces only group intercepts with independent noise; no correlated features exist through which the learner can reconstruct the missing direction.  
+Type~II adds a single correlated covariate linked to the omitted variable through a tunable parameter~$\rho$, allowing partial inference of the hidden signal.  
+Type~III embeds the omitted variable within a multivariate feature network generated via a Gaussian copula \cite{nelsen2007copulas}, distributing its influence across the manifold and enabling near-complete recovery.  
+In all regimes, the stochastic error term~$\varepsilon$ follows a mean-zero normal distribution, ensuring comparable noise scale and isolating geometric differences in the DGP rather than algorithmic effects.
+
+% Fig 1 ----------------------------------------
+\begin{figure}[htpb]
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig_1_dgp_geometry.png}
+  \caption{\textbf{Correlation geometry across omission regimes.} 
+  Each panel represents a distinct data–generating process (DGP) configuration. 
+  As correlation structure strengthens from Type~I to Type~III, the omitted signal becomes increasingly embedded within the feature manifold, tracing a continuum from genuine omission to full reconstruction.}
+  \label{fig:dgp}
+\end{figure}
+
+To make the abstract geometry tangible, we instantiate $X$ as a stylized credit feature set 
+(\texttt{income, dti, util, hist, edu, empyrs}) and $Z$ as a latent regional indicator. 
+This mapping anchors the theoretical setup in a familiar applied domain while remaining fully synthetic. For each regime, we simulate $n = 100{,}000$ observations according to the specified DGP.
+We evaluate three learners—a logistic regression, an XGBoost model, and a shallow batch–normalized neural network—each trained twice: once excluding $Z$ and once including it.  
+The comparison between these paired fits quantifies how much of the omitted signal each learner reconstructs from correlated features alone.
+
+The empirical reconstruction ratio, an AUC-based analog of the theoretical $R^2$ measure,\footnote{Equation~\ref{eq:reconstruction_ratio} defines the theoretical reconstruction ratio in terms of $R^2$ under a linear–Gaussian DGP.  
+In simulations, we use the AUC-based form, which preserves the same monotonic mapping of recovered variance.}
+is defined as
+\[
+R(\rho)
+  = \frac{AUC_{\text{no region}} - 0.5}
+          {AUC_{\text{with region}} - 0.5}.
+\]
+This statistic expresses the fraction of recoverable variance that remains after suppression, normalized by the model’s attainable performance when $Z$ is included.  
+Values near zero correspond to genuine omission (Type~I), intermediate values to partial recovery through correlated covariates (Type~II), and values approaching one to complete reconstruction via latent correlation structure (Type~III).  
+Models serve only as diagnostic probes revealing how these underlying geometries manifest in prediction and error space. All simulations fix random seeds for comparability.  
+
+%==========================================================
+\subsection{Expected Reconstruction Geometry}
+
+The three omission regimes can be viewed as distinct points along a single
+continuum of correlation strength~$\rho$, which governs how much of the omitted
+direction can, in principle, be recovered from the remaining covariates.  
+Under the linear–Gaussian approximation derived in Appendix~B, the fraction of
+recoverable variance grows roughly as~$\rho^2$.  
+This yields the idealized reconstruction geometry summarized in
+Table~\ref{tab:expected}.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Expected recovery by omission regime (theoretical).}}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{cllc}
+\toprule
+\textbf{Regime} & \textbf{Dominant geometry} & \textbf{Typical construction} & \textbf{Expected recovery} \\
+\midrule
+Type~I & $\rho \!\approx\! 0$ — omitted factor orthogonal to observables
+       & Separate group intercepts; features i.i.d.
+       & Minimal ($R \!\ll\! 1$) \\[3pt]
+Type~II & $0 < \rho < 1$ — omitted factor correlated with one covariate
+        & Region shifts a single feature (income)
+        & Partial ($R \!\approx\! 0.8$–$0.95$) \\[3pt]
+Type~III & $\rho \!\to\! 1$ — omitted factor embedded in latent network
+         & Gaussian–copula correlation structure
+         & Near‐complete ($R \!\approx\! 1$) \\
+\bottomrule
+\end{tabular}%
+}
+\label{tab:expected}
+\end{table}
+
+This theoretical table serves as a geometric benchmark:  
+as~$\rho$ increases, the omitted signal projects more directly onto the span of
+the observed covariates, making it progressively easier for any learner to
+reconstruct.  
+In the limit of full correlation (Type~III), suppression becomes a coordinate
+rotation rather than a loss of information.  
+The empirical simulations that follow test this theoretical expectation by
+training multiple model classes on synthetic DGPs engineered to represent each
+regime.
+
+% =========================================================
+\section{Results: Reconstruction as a Function of Correlation}
+\label{sec:results}
+
+\subsection{Type I: Pure Intercept Shift}
+When the region effect enters solely through an additive intercept $\alpha_r$, no feature in the covariate set contains information about region membership.  
+This serves as the geometric baseline: demeaning or omitting the region variable eliminates all between-group separation, and models converge to an identical posterior distribution for every region.
+
+Figure~\ref{fig:typeI} and Figure~\ref{fig:reliability}
+summarize this baseline geometry.  
+Because the only group difference lies in the intercept, the model has
+no correlated feature through which to reconstruct it.
+All learners therefore collapse to a single pooled prediction rate.
+These plots establish the visual benchmark against which
+the correlated regimes (Types II and III) will later be compared.
+
+% Fig 2(a) and (b) ---------------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.465\textwidth}
+    \includegraphics[width=\textwidth]{fig_2a_groupwise_calibration.png}
+    \caption{\textbf{Group-wise calibration: true vs.\ predicted approval.}} 
+    \label{fig:2a_calibration}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_2b_groupwise_bias.png}
+    \caption{\textbf{Group-wise prediction bias by model.}} 
+    \label{fig:2b_bias}
+  \end{subfigure}
+
+  \caption{\textbf{Type I regime (pure intercept).}
+  Each panel shows groupwise calibration (left) and bias (right).  
+  With intercept-only differences removed, all learners collapse to a pooled mean, confirming non-recoverability.}
+  \label{fig:typeI}
+\end{figure}
+
+
+Despite their differing architectures, the three baseline models
+exhibit nearly identical group-wise predictions.
+Residual biases center around zero, confirming that no hidden direction
+remains to reconstruct once the intercept is removed.
+The diagnostic model including region offers no performance gain,
+illustrating that all meaningful structure has been neutralized by design.
+
+To verify that this holds across probability space,
+Figure~\ref{fig:reliability} plots shared-quantile reliability curves.
+All models align closely along the 45-degree line, indicating that
+calibration is uniform across regions and confirming that the system
+is fully homogenized when only intercept differences exist.
+
+% Fig 3 -------------------------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.55\textwidth]{fig_3_reliability_quantile_shared.png}
+  \caption{\textbf{Reliability (calibration) curves under shared quantile bins (Type I).} 
+  Models align closely when differences are purely intercept-based.}
+  \label{fig:reliability}
+\end{figure}
+
+Taken together, Figures \ref{fig:typeI} and \ref{fig:reliability}
+establish the geometric baseline for omission:
+when no correlated channel exists, suppression genuinely erases
+group separation.  
+The next regimes introduce correlation pathways that progressively
+re-encode the missing direction into observable space.
+
+\subsection{Type II: Correlated Covariate}
+When the omitted region variable correlates with one feature, e.g., income, that feature partially restores the lost direction.  
+As the correlation $\rho$ increases, the model’s predictions diverge by region even without explicit access to it.  
+Figure \ref{fig:typeII-full} visualizes this reconstruction: each learner progressively recovers the hidden structure, and the diagnostic model bounds the attainable separation.
+
+% Fig 4 (a) to (f) ---------------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_4c_typeII_Logistic_no_region.png}
+    \caption{\textbf{Logistic — no region.}}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_4d_typeII_Logistic_with_region.png}
+    \caption{\textbf{Logistic — with region.}}
+  \end{subfigure}
+  
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_4a_typeII_XGB.png}
+    \caption{\textbf{XGBoost — no region.}}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_4b_typeII_diagnostic.png}
+    \caption{\textbf{XGBoost — with region (diagnostic).}}
+  \end{subfigure}
+
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_4e_typeII_NeuralNet_no_region.png}
+    \caption{\textbf{NeuralNet — no region.}}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_4f_typeII_NeuralNet_with_region.png}
+    \caption{\textbf{NeuralNet — with region.}}
+  \end{subfigure}
+
+  \caption{\textbf{Type II regime (correlated covariate).}
+  As the correlation between income and region increases, no–region models show
+  incipient regionwise separation—posterior densities begin to diverge but remain
+  overlapped relative to the diagnostic, which provides the attainable upper bound.}
+  \label{fig:typeII-full}
+\end{figure}
+Even without direct access to region identifiers,
+the \emph{no–region} learners begin to
+separate the posterior densities by region, showing emerging but incomplete
+divergence relative to the diagnostic.
+As correlation strength increases, reconstruction does not rise gradually but instead
+switches sharply once~$\rho$ exceeds a modest threshold.
+Beyond that point, all learners recover roughly the same fraction of the signal
+($R\!\approx\!0.8$–$0.9$) and gain little from further correlation.\footnote{%
+Empirically, all three learners display what can only be described as an appetite
+for moderate correlation: once $\rho$ reaches about~0.3, reconstruction saturates near~0.85,
+long before the theoretical $\rho^2$ limit is reached.  
+The effect is monotone in geometry but abrupt in practice—a single correlated path is enough
+for the models to declare themselves full.}
+This regime marks the transition from genuine omission to geometric rotation—
+the point where fairness-through-unawareness begins to fail even though explicit identifiers remain excluded.
+
+\subsection{Type III: Latent Correlation Network}
+In the third regime, the regional signal is distributed across multiple correlated features through a Gaussian copula.  
+Here, omission fails completely: every model reproduces the diagnostic’s inter-group separation, even without explicit region input.  
+Geometrically, the hidden direction becomes fully embedded in the feature manifold.
+This represents the geometric limit of reconstruction:
+once the structure spans the feature manifold, 
+suppression of the signal fails entirely.
+
+Figure~\ref{fig:typeIII-full} visualizes this behavior.
+
+% Fig 5 (a) to (f) ---------------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+   \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_5c_typeIII_Logistic_no_region.png}
+    \caption{\textbf{Logistic — no region.}}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_5d_typeIII_Logistic_with_region.png}
+    \caption{\textbf{Logistic — with region.}}
+  \end{subfigure}
+  
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_5a_typeIII_XGB.png}
+    \caption{\textbf{XGBoost — no region.}}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_5b_typeIII_diagnostic.png}
+    \caption{\textbf{XGBoost — with region (diagnostic).}}
+  \end{subfigure}
+
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_5e_typeIII_NeuralNet_no_region.png}
+    \caption{\textbf{NeuralNet — no region.}}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{fig_5f_typeIII_NeuralNet_with_region.png}
+    \caption{\textbf{NeuralNet — with region.}}
+  \end{subfigure}
+
+  \caption{\textbf{Type III regime (latent correlation network).}
+  Once the omitted variable’s signal is distributed across correlated features,
+  all learners reproduce the diagnostic’s regional separation.  
+  Suppression no longer removes the structure—it is fully re-encoded within the manifold.}
+  \label{fig:typeIII-full}
+\end{figure}
+
+% --- commentary paragraph
+\paragraph*{Comment on Figure~\ref{fig:typeIII-full}.}
+When the omitted variable is embedded in a correlated feature network, every
+learner—even those trained without region—reconstructs the full separation
+close to the distributions observed in the diagnostic.  Each curve collapses into a distinct,
+high-confidence mode corresponding to its true region.  The apparent
+``spikes'' near $\hat{p}=1$ indicate that the latent correlation manifold now
+spans the entire decision boundary: the model’s posteriors have become
+effectively deterministic.  This is the geometric limit of omission—the region
+direction is no longer lost but fully encoded across the correlated
+covariates.  Including the true variable adds little information, confirming reconstruction.
+
+The XGBoost model without explicit region input reproduces nearly the same
+probability densities as the diagnostic oracle.
+Every region’s distribution separates cleanly, confirming that
+the omitted structure is now fully recoverable from the correlated manifold.
+At this stage, inclusion of the true variable adds virtually no information:
+the geometry itself guarantees reconstruction.
+
+Together, Figures~\ref{fig:typeII-full} and~\ref{fig:typeIII-full}
+illustrate a smooth continuum from partial to complete recovery
+as correlation strength increases.
+The next section interprets these results in terms of identification,
+fairness, and model calibration.
+
+Every model family---from linear to deep---follows the same monotone trajectory, differing only in slope and smoothness.
+
+%===========================================================
+\subsection{Observed Reconstruction Across Regimes}
+
+Across the three omission regimes, reconstruction follows a single geometric 
+trajectory rather than a collection of model-specific behaviors. 
+Type~I marks true erasure: with no correlated channel, all learners collapse to the pooled mean. 
+Type~II introduces a single projection path, allowing partial recovery of the omitted direction through the correlated covariate. 
+Type~III disperses the same signal across a latent correlation network, making suppression equivalent to a coordinate rotation. 
+Together these regimes trace a smooth continuum from genuine omission to complete re-embedding. 
+Model architecture changes only the slope of that trajectory, not its limit—reconstruction is governed entirely by the correlation geometry of the data-generating process. 
+Fairness-through-unawareness therefore fails for structural, not algorithmic, reasons: once correlation exists, the omitted axis will inevitably be rebuilt within the observable manifold.
+
+\medskip
+This progression shows that omission is not a discrete event but a geometric
+transformation: the missing coordinate first disappears (Type~I), then tilts
+into the observable span (Type~II), and finally becomes fully embedded within
+it (Type~III).  The continuum defines the identification surface of the
+data--generating process itself.  Models of every class merely trace that
+surface; their flexibility affects only smoothness, not destination.  In this
+sense, reconstruction is an invariant property of the correlation geometry,
+not a by-product of learning capacity.
+Tables~\ref{tab:expected} and~\ref{tab:reconstruction} summarize the
+theoretical and empirical reconstruction patterns across all three omission
+regimes.  
+The first presents the idealized expectation derived from the geometry of the
+data–generating process; the second reports the actual recovery rates observed
+in the simulations.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Empirical reconstruction ratios by omission regime.}}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{Type I} & \textbf{Type II} & \textbf{Type III} \\
+\midrule
+Logistic  & 0.877 & 0.811 & 0.995 \\
+XGBoost   & 0.858 & 0.742 & 0.993 \\
+NeuralNet & 0.886 & 0.823 & 0.996 \\
+\bottomrule
+\end{tabular}
+\label{tab:reconstruction}
+\end{table}
+
+\vspace{-3em}
+\begin{center}
+{\footnotesize\textit{Note.} 
+Type~I ratios appear numerically high because both AUC values hover near~0.5; 
+the ratio here indicates that including the omitted variable adds no information, 
+not that reconstruction occurred. 
+Groupwise separation in Figure~\ref{fig:typeI} confirms genuine omission.}
+\end{center}
+
+The empirical pattern aligns with the theoretical geometry but with a notable inflection.
+Reconstruction remains monotone in $\rho$, yet the rise is not gradual—it switches sharply once moderate correlation appears.
+In the intermediate regime (Type II), recovery saturates near $R\approx0.85$ and then stabilizes before rising again in the fully correlated limit (Type III).
+
+\paragraph{Why marginal correlation appears to ``hurt'' recovery in Type~II.}
+As~$\rho$ increases, the omitted direction aligns more strongly with an observed
+feature such as income, improving its projection onto the observable span.
+Yet that same alignment introduces curvature in the correlation manifold:
+variance that was previously orthogonal to the omitted axis now lies along it.
+Locally, the model gains orientation but loses stability—the decision surface
+tilts toward the proxy feature while noise around that feature inflates.
+The transient ``dip'' in reconstruction therefore reflects a geometric trade-off
+rather than an estimation artifact: alignment strengthens identifiability in one
+dimension even as collinearity perturbs the margin.  
+
+By the time the system reaches the Type~III regime, the signal no longer travels
+through a single proxy but is distributed across the latent network.
+Pairwise correlations with region weaken, yet joint recoverability saturates
+near~$R\!\approx\!1$.
+The apparent flattening in Type~II thus marks the inflection point where a
+single-path projection gives way to full manifold embedding.
+
+As a result, the AUC for the suppressed model may stagnate or even decline
+slightly before rising again in the fully correlated limit.
+By the Type~III regime, the omitted signal has dispersed across multiple
+covariates; pairwise correlations with region diminish, yet joint
+recoverability saturates near~$R\!\approx\!1$.  
+The apparent "dip'' in Type~II is therefore not a contradiction but a
+signature of geometric tension between alignment and multicollinearity.
+
+Together, the theoretical and empirical tables confirm the central result:
+recoverability is governed by the correlation geometry of the DGP, not by
+model architecture.  
+Every learner---linear, tree-based, or neural---traces the same underlying
+trajectory as~$\rho$ increases.
+
+% =============================================================
+\subsection{Predictive Performance and Calibration}
+
+Despite their differing inductive biases, all learners achieve nearly identical overall AUCs once correlations are present.  
+Figure \ref{fig:calibration} shows reliability curves computed on held-out data.  
+The diagnostic model including region slightly dominates, but the margin is minimal, underscoring that exclusion of the variable does not eliminate its informational content.
+
+% Fig 6 --------------------------------------------------------------------------
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{fig_6_reliability_across_regimes.png}
+  \caption{\textbf{Reliability (calibration) curves across omission regimes.}
+  Each line represents the average calibration curve across all models within a given regime.  
+  As omitted structure becomes increasingly correlated, the curves remain near the diagonal—indicating apparent global calibration—but their curvature diverges systematically.  
+  By the Type~III regime, models reach deep into the lower probability space (down to $\hat{p}\!\approx\!0.4$), reproducing the same structure as the diagnostic despite having never observed region directly.  
+  This pattern parallels findings in model interpretability research
+(\citealp{lipton2018mythos}),
+where globally calibrated models can remain locally misaligned
+when the latent geometry re-encodes protected structure.
+Omission no longer removes information; it merely changes the coordinate system through which it is reconstructed.  
+  \emph{Type~III is not just well-calibrated—it is calibrated on the wrong basis: the model has internally rebuilt the missing group axis, reproducing the regional ranking entirely from correlated features.}}
+  \label{fig:calibration}
+\end{figure}
+
+
+% =========================================================
+\section{Operational Diagnostics and Limits (Informative)}
+\label{sec:ops}
+
+\paragraph{Purpose.}
+The results above are theoretical and simulated. This section records \emph{how one would test for the geometry in practice}, without asserting any domain findings here. The goal is methodological: quantify whether suppression removed \emph{observability} or merely changed basis.
+
+\paragraph{Two–fit reconstruction check.}
+Train two models on the same sample and features:
+(i) a \emph{suppressed fit} that excludes a governed coordinate (e.g., a geographic or institutional index), and
+(ii) a \emph{diagnostic fit} that includes that coordinate.\footnote{Use of governed coordinates should be restricted to offline auditing under appropriate governance; they are not used in production decisioning.}
+Let $\mathrm{AUC}_{\text{w/o}}$ and $\mathrm{AUC}_{\text{with}}$ be out–of–sample AUCs. Define the \emph{reconstruction rate}
+\[
+\mathrm{Recon} \;=\; \frac{\mathrm{AUC}_{\text{w/o}} - 0.5}{\mathrm{AUC}_{\text{with}} - 0.5}.
+\]
+Values near $1$ indicate that omission did not meaningfully reduce the learnable signal, consistent with Type~II/III geometry.
+
+\paragraph{Residual geometry.}
+Disaggregate predicted probabilities by a latent grouping (e.g., region buckets, instrument bins). Plot groupwise calibration/bias curves. Under the geometry, suppressed structure reappears as systematic under– and over–prediction that \emph{aligns with the omitted axis}. Only the diagnostic fit should flatten these deviations.
+
+\paragraph{Leakage/robustness checklist.}
+To ensure the diagnostic is about geometry and not artifacts:
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Time splits:} fit/train on earlier vintages, evaluate on later ones.
+  \item \textbf{Train–only transforms:} imputation/scaling fit on train, applied to test.
+  \item \textbf{Feature governance:} document features with high mutual information to the governed coordinate; rerun without underwriting outputs if applicable.
+  \item \textbf{Threshold–free reporting:} compare means of predicted probabilities and full calibration curves, not hard thresholds.
+\end{itemize}
+
+\paragraph{What the diagnostics mean.}
+The theory predicts three regimes:
+Type~I (pure intercept) $\Rightarrow$ no reconstruction;
+Type~II (single correlated covariate) $\Rightarrow$ partial reconstruction scaling with $\rho$;
+Type~III (latent correlation network) $\Rightarrow$ near–complete recovery.
+Empirically, high $\mathrm{Recon}$ together with oriented residuals is evidence of Type~II/III geometry in the observed domain.
+
+\paragraph{Limits and compliance boundary.}
+The geometry implies that \emph{suppression alone cannot de–identify a correlated direction}.  
+However, corrective \emph{per–group or per–individual modifiers} tied to governed attributes (or their proxies) belong to policy/legal space and are typically disallowed for production decisioning in many regulated domains.  
+Accordingly, practical responses live on the \emph{model‐risk} side:
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Audit, don’t decide:} use governed coordinates only in offline validation to quantify $\mathrm{Recon}$, calibration by group, and proxy strength.
+  \item \textbf{Feature justification:} retain only features with documented business necessity and acceptable proxy strength; monitor drift of those relationships.
+  \item \textbf{Capacity/shape controls:} apply monotonicity and regularization constraints that limit arbitrary curvature (affects \emph{how} the model bends toward the hidden axis, not the underlying identifiability).
+  \item \textbf{Process controls:} add human review or abstain policies in regions of high reconstruction risk; improve data quality where missingness drives spurious correlations.
+  \item \textbf{Ongoing monitoring:} track reconstruction rate and groupwise calibration over time; trigger review on threshold exceedances.
+\end{itemize}
+
+\paragraph{External validity (pointer only).}
+A companion empirics study applies these diagnostics to multiple public credit datasets and reports reconstruction rates and calibration patterns consistent with the theory. Related empirical work on proxy discrimination and algorithmic redlining in credit 
+demonstrates the same structural leakage (\citealp{fuster2020predictably,wachter2021bias}). That analysis, with full data provenance and governance, is outside the scope of this paper.
+
+% =========================================================
+\section{Related Work}
+\label{sec:related}
+
+The identification problem addressed here extends three literatures.
+First, classical econometrics establishes that omitting correlated regressors produces biased estimates
+(\citealp{angrist2009mostly, wooldridge2010econometric}).
+Second, causal‐inference frameworks formalize confounding and back‐door criteria
+(\citealp{pearl2009causality, imbens2015causal}).
+Third, fairness research in machine learning has shown that removing protected attributes
+does not eliminate their influence when proxies remain
+(\citealp{dwork2012fairness, barocas2016big, mehrabi2021survey}).
+The present work integrates these perspectives
+by expressing omission as a geometric projection problem.
+Related notions of representation geometry and feature manifolds
+appear in studies of deep representation learning
+(\citealp{bengio2013representation, bietti2021learning}),
+but their implications for identification have not been made explicit.
+This paper connects those threads by demonstrating
+how the recovery of omitted structure is an inevitable function of correlation strength.
+
+A parallel literature in fair representation learning and disentanglement 
+attempts to enforce independence between protected attributes and predictive representations
+using adversarial or variational methods 
+(\citealp{zhang2018mitigating,beutel2017data,locatello2019challenging}).
+The present framework provides a geometric explanation for why such methods often plateau:
+once $\rho>0$, the protected dimension is already embedded in the span of observable covariates,
+making perfect disentanglement theoretically unattainable.
+These approaches can only reorient the manifold, not remove its underlying correlation structure.
+
+Having established that reconstruction follows directly from correlation geometry,
+the next section outlines practical diagnostics for detecting these patterns in real data.
+
+% =========================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+The results unify classical identification theory with modern representation learning through a single idea:
+omission is a geometric transformation, not a deletion.
+Across the three regimes, correlation strength $\rho$ alone determines how the suppressed direction re-enters the observable span.
+Type I represents genuine erasure, Type II marks a sharp transition once even one correlated covariate carries the signal,
+and Type III completes the rotation—the hidden axis is fully embedded in the manifold.
+Every learner follows this same trajectory; flexibility changes only slope, not destination.
+
+The implication is structural and universal:
+if a governed or protected attribute is correlated with other features,
+removing it does not remove its influence.
+It only changes basis.
+Fairness-through-unawareness therefore fails not because models are complex,
+but because the geometry of the data guarantees reconstruction once correlation exceeds modest levels.
+
+\medskip
+Taken together, Types~I–III define a taxonomy of omission geometries.
+Type~I corresponds to true non‐identification; Type~II to partial projection
+with geometric distortion; and Type~III to full embedding where suppression is
+equivalent to rotation. The arc from I to III traces the transition from bias to invariance—the point at which omission no longer removes information but simply relocates it within the manifold.  Recognizing this structure is key to
+interpreting what machine‐learning models ``recover'' when they appear fair but
+remain geometrically informed. \footnote{\textbf{Acknowledgements.} This paper was written in about 40 hours fueled by caffeine and existential
+irritation at preprocessing, largely on a dare with an LLM who said I couldn’t.
+The LLM since claims that its compile was misunderstood.  
+As always, all mistakes are, unfortunately, my own.}
+
+\clearpage
+\bibliographystyle{plainnat}
+\bibliography{Geometry_of_Omission}
+\clearpage
+
+% =========================================
+% Appendix
+% =========================================
+
+% Appendix A ------------------------------------------------------
+\appendix
+\section{Appendix A: Reproducibility and Code Repository}
+\label{app:reproducibility}
+
+All simulations and figures are fully reproducible using the public repository:
+
+\begin{center}
+\href{https://github.com/r-whitworth/geometry_of_omission}
+     {github.com/r-whitworth/geometry\_of\_omission}
+\end{center}
+
+\noindent The repository is released under the MIT License and contains the
+exact scripts used to generate every figure and table in this paper.
+
+\paragraph{Environment.}
+Experiments were run on macOS 15 with Python 3.11.
+All required libraries and versions are pinned in
+\texttt{environment.yml} and \texttt{requirements.txt}.
+A deterministic conda setup can be created as:
+
+\begin{verbatim}
+conda env create -f environment.yml
+conda activate geometry_of_omission
+\end{verbatim}
+
+\paragraph{Execution.}
+The entire pipeline is contained in the script
+\texttt{geometry\_of\_omission.py}.
+Running it from the project root will:
+
+\begin{enumerate}[noitemsep,topsep=0pt]
+  \item Generate synthetic DGPs for all three regimes (Type I–III),
+  \item Train logistic, XGBoost, and neural-network models
+        both with and without region indicators,
+  \item Compute reconstruction ratios and AUC metrics,
+  \item Save all figures (Figs 1–6) and CSV outputs
+        to \texttt{figures/} under a deterministic seed.
+\end{enumerate}
+
+\paragraph{Output structure.}
+\begin{itemize}[noitemsep,topsep=0pt]
+  \item \texttt{figures/} — exported figures and DGP CSVs  
+        (\texttt{dgp\_Type\_I.csv}, \texttt{reconstruction\_Type\_I.csv}, …)
+  \item \texttt{geometry\_of\_omission.py} — full production script  
+  \item \texttt{run\_experiments.ipynb} — notebook interface (optional)  
+  \item \texttt{requirements.txt}, \texttt{environment.yml} — dependencies
+\end{itemize}
+
+\paragraph{Determinism.}
+All random seeds are fixed at 42
+for NumPy, PyTorch, and scikit-learn.
+Train/test splits are stratified on the outcome $y$
+to ensure identical partitions across model classes.
+
+\paragraph{Hardware.}
+The entire pipeline runs in under 10 minutes
+on a modern laptop CPU; no GPU is required.
+
+\paragraph{License and citation.}
+Code and text are provided under the MIT License.
+When referencing this work, please cite the arXiv preprint
+\emph{“The Geometry of Omission: Type I, II, and III Identification in Correlated Data.”}
+
+% =================================
+% Appendix B. A Simple Geometry of Recovery
+% =================================
+
+\section*{Appendix B. Analytic Form of the Reconstruction Geometry}
+\label{app:simple-geometry}
+
+Consider a latent index model $y^\star = \beta_x x + \beta_z z + \varepsilon$ with
+$\varepsilon \sim \mathcal{N}(0,\sigma_\varepsilon^2)$ and $(x,z)$ jointly Gaussian,
+$\mathrm{Var}(x)=\sigma_x^2$, $\mathrm{Var}(z)=\sigma_z^2$, and $\mathrm{Corr}(x,z)=\rho$.
+A learner that omits $z$ but observes $x$ forms the best linear predictor
+$ \tilde y^\star = \tilde\beta\, x$ where
+$\tilde\beta = \beta_x + \beta_z\cdot \frac{\mathrm{Cov}(x,z)}{\mathrm{Var}(x)}
+= \beta_x + \beta_z\cdot \rho \frac{\sigma_z}{\sigma_x}$.
+The omitted component $\beta_z z$ decomposes into its linear projection on $x$
+plus an orthogonal residual:
+\[
+\beta_z z = \underbrace{\beta_z \cdot \rho \frac{\sigma_z}{\sigma_x} x}_{\text{reconstructable}} ~+~ \underbrace{\beta_z u}_{\text{unrecoverable}},
+\quad u \perp x,\ \mathrm{Var}(u) = \sigma_z^2(1-\rho^2).
+\]
+Hence the \emph{variance share} of the omitted signal recoverable from $x$ is precisely
+\[
+\mathcal{R}(\rho) \;=\; \frac{\mathrm{Var}\!\left(\beta_z \rho \tfrac{\sigma_z}{\sigma_x} x\right)}
+{\mathrm{Var}(\beta_z z)}
+\;=\; \frac{\beta_z^2 \rho^2 \sigma_z^2}{\beta_z^2 \sigma_z^2}
+\;=\; \rho^2.
+\]
+Thus in the linear-Gaussian case, the fraction of the omitted direction that can be
+reconstructed from $x$ grows \emph{monotonically and quadratically} in $\rho$.
+
+For binary outcomes $y=\mathbb{I}\{y^\star>0\}$ fit by a margin-based learner (logit/probit),
+the AUC is a monotone function of the \emph{signal-to-noise} ratio of the margin.
+Under a small-perturbation (delta method) approximation, translating the variance
+decomposition above implies an AUC-based reconstruction ratio
+$R(\rho) = \frac{\mathrm{AUC}_{\text{omit}}-0.5}{\mathrm{AUC}_{\text{full}}-0.5}$
+that is strictly increasing in $\rho$ and approximately proportional to $\rho^2$
+when the omitted channel dominates the incremental margin.\footnote{
+Formally, if the incremental margin from $z$ is locally linear in $\rho$ and
+the AUC is locally linear in the margin variance, then $R(\rho)\approx \rho^2$.
+In non-linear or multi-feature settings (Type II–III), the same projection logic
+applies to the \emph{span} of correlated covariates, yielding the same monotone
+relationship and near-quadratic growth when a single dominant path carries the signal.}
+This explains the empirical monotonicity we observe across regimes as $\rho\to 1$,
+and why flexible learners approach $R(\rho)\approx 1$ in Type~III.
+
+\clearpage
+% ======================================
+% Appendix C
+% ======================================
+
+\section{Appendix C. Correlation Geometry Across Regimes}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{appendix_typeI_corr_heatmap.png}
+    \caption{Type I — Intercept only.}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{appendix_typeII_corr_heatmap.png}
+    \caption{Type II — Single correlated feature.}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{appendix_typeIII_corr_heatmap.png}
+    \caption{Type III — Latent correlation network.}
+  \end{subfigure}
+  \caption{\textbf{Correlation geometry across omission regimes.}
+  As correlation strengthens from Type I to III,
+  the omitted structure becomes increasingly embedded within the feature network,
+  making the erased coordinate progressively recoverable.}
+  \label{fig:appendix-corr}
+\end{figure}
+
+\end{document}
