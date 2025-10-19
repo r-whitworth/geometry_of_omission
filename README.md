@@ -1,4 +1,5 @@
 # The Geometry of Omission: Type I, II, and III Identification in Correlated Data
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17392989.svg)](https://doi.org/10.5281/zenodo.17392989)
 
 Rebecca Whitworth, PhD  
 License: MIT
