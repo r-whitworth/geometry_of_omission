@@ -12,11 +12,15 @@ It is not intended for commercial or production use.
 The views expressed are those of the author and do not represent any affiliated institution.
 
 **Citation:**
-@misc{whitworth2025geometry,
-  title={The Geometry of Omission: Type I, II, and III Identification in Correlated Data},
-  author={Whitworth, Rebecca},
-  year={2025},
-  license={MIT}
+@software{whitworth2025geometry,
+  author    = {Rebecca Whitworth},
+  title     = {The Geometry of Omission: Type I, II, and III Identification in Correlated Data},
+  month     = oct,
+  year      = 2025,
+  publisher = {Zenodo},
+  version   = {v1.0.0a},
+  doi       = {10.5281/zenodo.17392989},
+  url       = {https://doi.org/10.5281/zenodo.17392989}
 }
 
 ---
@@ -107,7 +111,7 @@ These diagnostics support robustness claims and transparency but are not shown i
 ### Citation
 If you use this code or reproduce figures, please cite:
 
-Whitworth, R. (2025). The Geometry of Omission: Type I, II, and III Identification in Correlated Data.
+Whitworth, R. (2025). The Geometry of Omission: Type I, II, and III Identification in Correlated Data [v1.0.0a]. Zenodo. https://doi.org/10.5281/zenodo.17392989
 
 ### Notes for Reproducibility
 - All simulations use fixed random seeds for full determinism.
