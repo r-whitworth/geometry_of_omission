@@ -89,19 +89,29 @@ geometry_of_omission.py to point to your preferred directory.)
 Each file name matches the figure numbering and title in the paper.
 
 ### Figures Produced by geometry_of_omission.py (Deterministic)
+| Figure | Title | Filename |
+|:--:|:--|:--|
+| **1** | DGP Geometry across omission regimes | `fig_1_dgp_geometry.png` |
+| **2a** | Groupwise Calibration (Type I) | `fig_2a_groupwise_calibration.png` |
+| **2b** | Groupwise Prediction Bias (Type I) | `fig_2b_groupwise_bias.png` |
+| **3** | Reliability (Calibration) Curves — Type I | `fig_3_reliability_quantile_shared.png` |
+| **4a** | XGBoost — no region (Type II) | `fig_4a_typeII_XGB.png` |
+| **4b** | XGBoost — with region (diagnostic, Type II) | `fig_4b_typeII_diagnostic.png` |
+| **4c** | Logistic — no region (Type II) | `fig_4c_typeII_Logistic_no_region.png` |
+| **4d** | Logistic — with region (Type II) | `fig_4d_typeII_Logistic_with_region.png` |
+| **4e** | NeuralNet — no region (Type II) | `fig_4e_typeII_NeuralNet_no_region.png` |
+| **4f** | NeuralNet — with region (Type II) | `fig_4f_typeII_NeuralNet_with_region.png` |
+| **5a** | XGBoost — no region (Type III) | `fig_5a_typeIII_XGB.png` |
+| **5b** | XGBoost — with region (diagnostic, Type III) | `fig_5b_typeIII_diagnostic.png` |
+| **5c** | Logistic — no region (Type III) | `fig_5c_typeIII_Logistic_no_region.png` |
+| **5d** | Logistic — with region (Type III) | `fig_5d_typeIII_Logistic_with_region.png` |
+| **5e** | NeuralNet — no region (Type III) | `fig_5e_typeIII_NeuralNet_no_region.png` |
+| **5f** | NeuralNet — with region (Type III) | `fig_5f_typeIII_NeuralNet_with_region.png` |
+| **6** | Reliability across omission regimes (Types I–III) | `fig_6_reliability_across_regimes.png` |
+| **A1** | Correlation geometry heatmap — Type I | `appendix_typeI_corr_heatmap.png` |
+| **A2** | Correlation geometry heatmap — Type II | `appendix_typeII_corr_heatmap.png` |
+| **A3** | Correlation geometry heatmap — Type III | `appendix_typeIII_corr_heatmap.png` |
 
-|---------|------------------------------------------------------------------------|--------------------------------------------|
-| Figure  | Title in Paper                                                         | Output Filename                            |
-|:-------:|:----------------------------------------------------------------------:|:-------------------------------------------|
-| **1**   | Comparing Normalization Regimes                                        | `fig_1_normalization_regimes.png`          |
-| **2**   | Group-wise Calibration: True vs Predicted Approval *(Type I)*          | `fig_2_groupwise_calibration.png`          |
-| **3**   | Group-wise Prediction Bias by Model *(Type I)*                         | `fig_3_groupwise_bias.png`                 |
-| **4**   | Reliability (Calibration) Curves *(Type I)*                            | `fig_4_reliability_quantile_shared.png`    |
-| **5a**  | Predicted Probability Distributions by Region *(Type II — XGB)*        | `fig_5a_typeII_XGB.png`                    |
-| **5b**  | Predicted Probability Distributions by Region *(Type II — Diagnostic)* | `fig_5b_typeII_diagnostic.png`             |
-| **6a**  | Predicted Probability Distributions by Region *(Type III — XGB)*       | `fig_6a_typeIII_XGB.png`                   |
-| **6b**  | Predicted Probability Distributions by Region *(Type III — Diagnostic)*| `fig_6b_typeIII_diagnostic.png`            |
-|---------|------------------------------------------------------------------------|--------------------------------------------|
 
 ### Supplemental Diagnostics
 Additional validation and exploratory checks can be reproduced using:
