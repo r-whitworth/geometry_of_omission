@@ -37,12 +37,19 @@ Through three simulated regimes, we demonstrate how omitted regional structure r
 
 ## Repository Structure
 geometry_of_omission/
+
 ├── geometry_of_omission.py        # Main replication script (reproduces all paper figures)
+
 ├── diagnostics_and_checks.py      # Optional diagnostics and exploratory analyses
+
 ├── figures/                       # Auto-generated output figures
+
 ├── requirements.txt               # Python package dependencies
+
 ├── environment.yml                # Conda environment for reproducibility
+
 ├── README.md
+
 └── LICENSE
 
 ---
