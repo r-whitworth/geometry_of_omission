@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[12]:
-
-
 #!/usr/bin/env python3
 # ==========================================================
 # Geometry of Omission — Reproduction Script (Figures 1–6)
@@ -104,10 +98,6 @@ REGION_COLORS = ["#082a54", "#59a89c", "#a559aa"]
 base_dir = os.path.dirname(os.path.abspath(__file__))
 export_dir = os.path.join(base_dir, "figures", "diagnostics")
 os.makedirs(export_dir, exist_ok=True)
-
-def savefig(name):
-    """Save figures to the repo's figures/diagnostics folder."""
-    plt.savefig(os.path.join(export_dir, name), dpi=300, bbox_inches="tight")
 
 def save_dgp(df, name):
     """Save a simulated DGP to CSV with deterministic name."""
@@ -253,78 +243,78 @@ def fit_bundle_both(df, seed=42):
     Returns models_no, models_with, and test set (Xte, yte, regions).
     """
     feats = ["income", "dti", "util", "hist", "edu", "empyrs"]
-
+    
     # ONE split, stratified on outcome only (NOT on region!)
     train, test = train_test_split(df, test_size=0.3, stratify=df["y"], random_state=seed)
-
+    
     # Scale features
     scaler = StandardScaler().fit(train[feats])
     Xtr_base = scaler.transform(train[feats])
     Xte_base = scaler.transform(test[feats])
-
+    
     ytr = train["y"].values
     yte = test["y"].values
     gre = test["region_id"].values
-
+    
     # ============================================
     # FIT WITHOUT REGION
     # ============================================
     Xtr_no = Xtr_base
     Xte_no = Xte_base
-
+    
     # Logistic (no region)
     logit_no = LogisticRegression(max_iter=1000, random_state=seed).fit(Xtr_no, ytr)
     p_log_no = logit_no.predict_proba(Xte_no)[:, 1]
-
+    
     # XGBoost (no region)
     xgb_no = xgb.XGBClassifier(
         max_depth=4, n_estimators=200, learning_rate=0.05,
         subsample=0.8, random_state=seed, eval_metric="logloss"
     ).fit(Xtr_no, ytr)
     p_xgb_no = xgb_no.predict_proba(Xte_no)[:, 1]
-
+    
     # Neural Net (no region)
     nn_no = train_nn_binary(Xtr_no, ytr, epochs=25, lr=1e-3, seed=seed)
     with torch.no_grad():
         p_nn_no = torch.sigmoid(nn_no(torch.tensor(Xte_no, dtype=torch.float32))).numpy().ravel()
-
+    
     models_no = OrderedDict([
         ("Logistic", p_log_no),
         ("XGBoost", p_xgb_no),
         ("NeuralNet", p_nn_no)
     ])
-
+    
     # ============================================
     # FIT WITH REGION (add region dummies)
     # ============================================
     Rtr = pd.get_dummies(train["region_id"], drop_first=True)
     Rte = pd.get_dummies(test["region_id"], drop_first=True).reindex(columns=Rtr.columns, fill_value=0)
-
+    
     Xtr_with = np.column_stack([Xtr_base, Rtr.values])
     Xte_with = np.column_stack([Xte_base, Rte.values])
-
+    
     # Logistic (with region)
     logit_with = LogisticRegression(max_iter=1000, random_state=seed).fit(Xtr_with, ytr)
     p_log_with = logit_with.predict_proba(Xte_with)[:, 1]
-
+    
     # XGBoost (with region)
     xgb_with = xgb.XGBClassifier(
         max_depth=4, n_estimators=200, learning_rate=0.05,
         subsample=0.8, random_state=seed, eval_metric="logloss"
     ).fit(Xtr_with, ytr)
     p_xgb_with = xgb_with.predict_proba(Xte_with)[:, 1]
-
+    
     # Neural Net (with region)
     nn_with = train_nn_binary(Xtr_with, ytr, epochs=25, lr=1e-3, seed=seed)
     with torch.no_grad():
         p_nn_with = torch.sigmoid(nn_with(torch.tensor(Xte_with, dtype=torch.float32))).numpy().ravel()
-
+    
     models_with = OrderedDict([
         ("Logistic", p_log_with),
         ("XGBoost", p_xgb_with),
         ("NeuralNet", p_nn_with)
     ])
-
+    
     return models_no, models_with, (Xte_base, yte, gre)
 
 # ==========================================================
@@ -336,7 +326,7 @@ def simulate_typeI(seed=42):
     sizes   = [4000, 3000, 2000]
     NOISE_SD    = 1.2
     INCOME_COEF = 0.00006
-
+    
     def make_region(alpha, n):
         income = np.random.lognormal(10, 0.5, n)
         dti    = np.random.beta(2, 5, n) * 2
@@ -352,14 +342,14 @@ def simulate_typeI(seed=42):
             "income": income, "dti": dti, "util": util, "hist": hist,
             "edu": edu, "empyrs": empyrs, "region_id": alpha, "y": y  # <-- changed column name
         })
-
+    
     parts = [make_region(a, n) for a, n in zip(regions, sizes)]
     df = pd.concat(parts, ignore_index=True)
-
+    
     # Map intercepts to region IDs 1, 2, 3
     alpha_to_id = {-0.5: 1, 0.0: 2, 0.7: 3}
     df["region_id"] = df["region_id"].map(alpha_to_id)
-
+    
     return df
 
 # ==========================================================
@@ -382,22 +372,22 @@ def simulate_typeII(seed=42, rho=0.3, n_by_region=(4000, 3000, 2000)):
     mu_log_inc, sigma_log_inc = 10.0, 0.25
     INCOME_COEF, NOISE_SD = 0.00003, 1.5
     B = dict(dti=-0.8, util=-0.5, hist=0.04, edu=0.08, empyrs=0.03)
-
+    
     REGION_INTERCEPT = 0.4  # <-- strength of direct region effect
-
+    
     parts = []
     for r in (1, 2, 3):
         n = sizes[r]
         z_r = region_code[r]
-
+        
         # income construction (keep your existing correlation structure)
         eps = np.random.normal(0, 1, n)
         income = np.exp(mu_log_inc + sigma_log_inc *
                 (np.sqrt(1 - rho**2)*eps + rho*z_r)
                 + np.random.normal(0, 0.15, n))
-
+        
         dti, util, hist, edu, emp = draw_other_X(n)
-
+        
         # NOW: add direct region effect to outcome
         lin = (INCOME_COEF*income + B["dti"]*dti + B["util"]*util
                + B["hist"]*hist + B["edu"]*edu + B["empyrs"]*emp
@@ -472,7 +462,7 @@ def simulate_typeIII(seed=42, rho=0.5, n_by_region=(4000, 3000, 2000)):
         n = sizes[r]
         z_r = region_code[r]  # <-- ADD THIS
         X = gcop(spec_for_region(r), corr, n)
-        df_r = pd.DataFrame(X, columns=["income","util","dti","hist","edu","empyrs"])
+        df_r = pd.DataFrame(X, columns=["income","dti","util","hist","edu","empyrs"])
         df_r["region_id"] = r
         lin = (INCOME_COEF*df_r["income"] + B["dti"]*df_r["dti"] + B["util"]*df_r["util"]
                + B["hist"]*df_r["hist"] + B["edu"]*df_r["edu"] + B["empyrs"]*df_r["empyrs"]
@@ -545,7 +535,7 @@ def figures_2_3_typeI(df, models_no, yte, gre):
     plt.close(fig)
 
     return yte, models_no  # <- Return what the old function returned
-
+    
 # ==========================================================
 # Figure 4 — Type II (All six panels)
 #   Keeps legacy names for XGB: 4a (no region), 4b (with region)
@@ -586,7 +576,7 @@ def figure_4_typeII(models_no, models_with, g_test):
         fig.subplots_adjust(top=0.88, bottom=0.32, left=0.12, right=0.97)
         savefig(f"fig_4{tag}_typeII_{suffix}")
         plt.close(fig)
-
+        
 # ==========================================================
 # Figure 5 — Type III (All six panels; same naming convention)
 # ==========================================================
@@ -648,7 +638,7 @@ def figure_6_reliability_across_regimes(model_sets, export_dir=None):
     ax.legend(frameon=False, loc="lower right", ncol=1, title="Regime")
     savefig("fig_6_reliability_across_regimes")
     plt.close(fig)
-
+    
 # -----------------------------
 # Correlation heatmaps (appendix)
 # -----------------------------
@@ -702,13 +692,13 @@ def sweep_rho_for_typeII(rhos=(0.1,0.2,0.3,0.4,0.5), seed=42):
     for r in rhos:
         df = simulate_typeII(seed=seed, rho=r)
         m_no, m_with, (Xte, y, g) = fit_bundle_both(df, seed=seed)
-
+        
         for m in m_no.keys():
             auc_no   = roc_auc_score(y, m_no[m])
             auc_with = roc_auc_score(y, m_with[m])
             R = (auc_no - 0.5) / (auc_with - 0.5) if (auc_with > 0.5) else np.nan
             rows.append({"rho": r, "model": m, "auc_no": auc_no, "auc_with": auc_with, "R": R})
-
+    
     df_out = pd.DataFrame(rows)
     path = os.path.join(export_dir, "reconstruction_vs_rho_typeII.csv")
     df_out.to_csv(path, index=False)
@@ -744,7 +734,7 @@ def main():
     print(df_typeI.groupby("region_id")[["income","y"]].mean())
     print("\ncorrelation with region_id:")
     print(df_typeI.corr(numeric_only=True)["region_id"].sort_values(ascending=False))
-
+    
     # --- TYPE II ---
     df_typeII = simulate_typeII(rho=0.3)
     save_dgp(df_typeII, "Type_II")
@@ -770,7 +760,7 @@ def main():
     print(df_typeIII.groupby("region_id")[["income","y"]].mean())
     print("\ncorrelation with region_id:")
     print(df_typeIII.corr(numeric_only=True)["region_id"].sort_values(ascending=False))
-
+    
     # ------------------------------------------------------
     # 7. Reliability across regimes (Type I–III summary)
     # ------------------------------------------------------
@@ -781,7 +771,7 @@ def main():
         "Type III": (yIII, mIII_no),
     }
     figure_6_reliability_across_regimes(model_sets=y_sets, export_dir=export_dir)
-
+    
     print("\n✅ All figures (1–6) generated successfully.")
     print(f"   Output directory: {export_dir}\n")
 
@@ -793,22 +783,3 @@ def main():
 # ----------------------------------------------------------
 if __name__ == "__main__":
     main()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
