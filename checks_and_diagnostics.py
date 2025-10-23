@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 # ==========================================================
 # Geometry of Omission — Diagnostics & Transparency
 # ==========================================================
@@ -97,9 +91,15 @@ REGION_COLORS = ["#082a54", "#59a89c", "#a559aa"]  # three regions
 # =========================
 # Output path (diagnostics)
 # =========================
-base_dir = os.path.dirname(os.path.abspath(__file__))
-export_dir = os.path.join(base_dir, "figures", "diagnostics")
-os.makedirs(export_dir, exist_ok=True)
+import pathlib
+
+try:
+    base_dir = pathlib.Path(__file__).resolve().parent
+except NameError:
+    base_dir = pathlib.Path.cwd()
+
+export_dir = base_dir / "figures" / "diagnostics"
+export_dir.mkdir(parents=True, exist_ok=True)
 
 def savefig(name):
     if not name.lower().endswith(".png"):
@@ -493,11 +493,4 @@ def run_typeIII_diagnostics():
 if __name__ == "__main__":
     run_typeII_diagnostics()
     run_typeIII_diagnostics()
-    print("\n✅ Diagnostics complete (see ~/Documents/Geometry_of_Omission/figures/diagnostics/)\n")
-
-
-# In[ ]:
-
-
-
-
+    print(f"\n✅ Diagnostics complete (see {export_dir})\n")
