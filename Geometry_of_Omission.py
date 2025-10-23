@@ -95,9 +95,16 @@ REGION_COLORS = ["#082a54", "#59a89c", "#a559aa"]
 # -----------------------------
 # Output directory
 # -----------------------------
-base_dir = os.path.dirname(os.path.abspath(__file__))
-export_dir = os.path.join(base_dir, "figures", "diagnostics")
-os.makedirs(export_dir, exist_ok=True)
+import pathlib
+
+try:
+    base_dir = pathlib.Path(__file__).resolve().parent
+except NameError:
+    # __file__ is not defined in notebooks or interactive sessions
+    base_dir = pathlib.Path.cwd()
+
+export_dir = base_dir / "figures" / "diagnostics"
+export_dir.mkdir(parents=True, exist_ok=True)
 
 def save_dgp(df, name):
     """Save a simulated DGP to CSV with deterministic name."""
