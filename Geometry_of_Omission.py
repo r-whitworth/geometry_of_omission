@@ -414,11 +414,6 @@ def simulate_typeII(seed=42, rho=0.3, n_by_region=(4000, 3000, 2000)):
 # TYPE III — Latent correlation network, tunable ρ (copula)
 # ==========================================================
 def simulate_typeIII(seed=42, rho=0.5, n_by_region=(4000, 3000, 2000)):
-    """
-    Type III: region influences MANY covariates via a latent correlation network.
-    Implement via a Gaussian copula whose off-diagonals are scaled by ρ.
-    Outcome has DIRECT region intercept creating omitted variable bias.
-    """
     seed_all(seed)
     sizes = {r: n for r, n in zip((1, 2, 3), n_by_region)}
     region_code = {1: -1.0, 2: 0.0, 3: +1.0}  # <-- ADD THIS
@@ -473,7 +468,7 @@ def simulate_typeIII(seed=42, rho=0.5, n_by_region=(4000, 3000, 2000)):
         df_r["region_id"] = r
         lin = (INCOME_COEF*df_r["income"] + B["dti"]*df_r["dti"] + B["util"]*df_r["util"]
                + B["hist"]*df_r["hist"] + B["edu"]*df_r["edu"] + B["empyrs"]*df_r["empyrs"]
-               + REGION_INTERCEPT * z_r  # <-- ADD THIS: direct region effect on outcome
+               + REGION_INTERCEPT * z_r
                + np.random.normal(0, NOISE_SD, n))
         df_r["y"] = (lin > 0).astype(int)
         parts.append(df_r)
