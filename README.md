@@ -19,10 +19,10 @@ The views expressed are those of the author and do not represent any affiliated 
   title     = {The Geometry of Omission: Type I, II, and III Identification in Correlated Data},
   month     = oct,
   year      = 2025,
-  publisher = {Zenodo},
+  publisher = {SSRN},
   version   = {v1.0.0a},
   doi       = {10.5281/zenodo.17392989},
-  url       = {https://doi.org/10.5281/zenodo.17392989}
+  url       = {https://ssrn.com/abstract=5700784}
 }
 ```
 ---
